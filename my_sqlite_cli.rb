@@ -1,24 +1,57 @@
 require "readline"
+require_relative "my_sqlite_request"
 
-while buf = Readline.readline(">", true)
-  p Readline::HISTORY.to_a
-  print(">>> ", buf, "\n")
+# Affiche les résultats d'un SELECT : chaque ligne avec les valeurs séparées par "|"
+def display_results(rows) end
+
+#  Dispatcher principal
+
+def execute_query(query)
+  query = query.strip
+  return if query.empty?
+
+  # Le case compare la commande à des regex. \A veut dire "début de la string"  et le i à la fin rend regex insensible à la casse (SELECT = select = Select).
+  case query
+  when /\ASELECT/i
+    request = parse_select(query)
+    results = request.run
+    display_results(results)
+
+  when /\AINSERT/i
+    request = parse_insert(query)
+    request.run
+    puts "1 row inserted."
+
+  when /\AUPDATE/i
+    request = parse_update(query)
+    request.run
+    puts "Rows updated."
+
+  when /\ADELETE/i
+    request = parse_delete(query)
+    request.run
+    puts "Rows deleted."
+
+  else
+    puts "Erreur : commande non reconnue. Utilise SELECT / INSERT / UPDATE / DELETE."
+  end
 end
 
+#  Boucle principale CLI
 
-# Faire une boucle qui va tourner au lancement du fichier.
-# Le but est de faire une CLI comme fait au dessus.
+puts "MySQLite version 0.1 2024-01-01"
 
-# Celle ci va écouter jusqu'à ce que l'utilisateur entre une commande dans le "terminal".
+while (input = Readline.readline("my_sqlite_cli> ", true))
+  input = input.strip                                             # enlève les espaces/retours à la ligne autour my_strip " [la[]la] " => "la[]la"
+  next if input.empty?
 
-# Si il y a une erreur dans le terminal ou que la commande n'est pas une requête SQL qui commence par les préfixes singulier à ce langages on met un message d'erreur pour dire de rentrer un format valide et revenir à "l'écoute".
-# Sinon les commandes que le CLI va accepter sont dans le fichiers doc.
+  break if input.downcase == "quit"
 
-# Lorsque la commande est faite on la parse de manière à détecter par quoi la requête commence c'est à dire qu'il y aura 4 types de parsing : SELECT, UPDATE, INSERT, DELETE.
+  begin                                                           # begin...rescue...end en Ruby permet de gérer les exceptions (erreurs)
+    execute_query(input)
+  rescue => error                                                 # exception de type StandardError et met dans error
+    puts "Erreur : #{error.message}"
+  end
+end
 
-# Lorsque le parsing est fais, donc l'appel du SQL grâce à la requête de l'utilisateur, il nous faudra afficher ce résultat dans le terminal et revenir sur le mode "écoute" donc l'utilisateur peut refaire une saisie.
-
-# Les returns command : pour select tu affiches chaque lignes du tableau qui est retourné par la fonction run de MySqliteQuery on affiche les valeurs séparé par des "|".
-#                       pour insert / update / delete affiche message de confirmation que la tâches à été effectué.
-
-# On rajoute la commande quit qui va nous servir à fermer le CLI correctement sans que l'utilisateur ne force le truc en fesant CTRL D dans le terminal.
+puts "Bye!"
